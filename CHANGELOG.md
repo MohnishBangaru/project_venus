@@ -156,11 +156,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Error handling and recovery testing
 - Production deployment
 
-### Contributors
-
-- **Mohnish Bangaru**: Project lead, architecture design, UI-Venus integration
-- **AI Assistant**: Implementation support, testing, documentation
-
 ### Acknowledgments
 
 - **UI-Venus Team**: For the state-of-the-art UI understanding model
