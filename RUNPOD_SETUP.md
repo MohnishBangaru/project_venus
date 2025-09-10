@@ -40,23 +40,19 @@ adb devices
 # Should show: emulator-5554    device
 ```
 
-**Configure ADB for Remote Access:**
-```bash
-# Allow remote connections (optional, for security)
-adb tcpip 5555
-
-# Or use port forwarding (recommended)
-adb -s emulator-5554 forward tcp:5037 tcp:5037
-```
-
 ### 2. On RunPod Instance
 
-**Configure Connection:**
+**Connect to Local ADB Server:**
 ```bash
-# The adbutils package will handle ADB connections automatically
-# Just ensure your local ADB server is running and accessible
+# Connect to your local machine's ADB server
+adb connect <your-local-ip>:5037
 
-# Test connection (optional)
+# Verify connection
+adb devices
+# Should show your emulator
+```
+
+**Test connection (optional)**
 python -c "import adbutils; adb = adbutils.AdbClient(); print(adb.device_list())"
 ```
 
@@ -223,7 +219,7 @@ crontab -e
 1. **Use SSD storage** for faster model loading
 2. **Enable GPU persistence** mode for better performance
 3. **Monitor memory usage** to avoid OOM errors
-4. **Use port forwarding** for more reliable ADB connections
+4. **Use direct ADB connection** for reliable emulator access
 5. **Keep model cache** to avoid re-downloading
 6. **Use appropriate batch sizes** for your GPU memory
 

@@ -50,43 +50,41 @@ def test_gpu_availability():
 
 
 def test_adb_connection():
-    """Test ADB connection."""
-    logger.info("🔍 Testing ADB connection...")
+    """Test ADB connection using adbutils."""
+    logger.info("🔍 Testing ADB connection with adbutils...")
     
     try:
-        # Check ADB version
-        result = subprocess.run(["adb", "version"], capture_output=True, text=True, timeout=10)
-        if result.returncode == 0:
-            logger.info("✅ ADB is available")
-        else:
-            logger.error("❌ ADB not working properly")
-            return False
+        import adbutils
+        
+        # Create adbutils client
+        adb = adbutils.AdbClient()
+        logger.info("✅ adbutils client created successfully")
         
         # Check for devices
-        result = subprocess.run(["adb", "devices"], capture_output=True, text=True, timeout=10)
-        if result.returncode == 0:
-            devices = []
-            for line in result.stdout.strip().split('\n')[1:]:
-                if line.strip() and '\tdevice' in line:
-                    device_id = line.split('\t')[0]
-                    devices.append(device_id)
+        devices = adb.device_list()
+        
+        if devices:
+            device_list = [device.serial for device in devices]
+            logger.info(f"✅ Found {len(devices)} device(s): {', '.join(device_list)}")
             
+            # Test basic communication with first device
             if devices:
-                logger.info(f"✅ Found {len(devices)} device(s): {', '.join(devices)}")
-                return True
-            else:
-                logger.warning("⚠️ No devices found")
-                logger.info("💡 Make sure your emulator is running and connected")
-                return False
+                device = devices[0]
+                try:
+                    result = device.shell("echo test")
+                    logger.info(f"✅ Device communication test successful: {result}")
+                    return True
+                except Exception as e:
+                    logger.warning(f"⚠️ Device communication failed: {e}")
+                    return False
         else:
-            logger.error("❌ Failed to list devices")
+            logger.warning("⚠️ No devices found")
+            logger.info("💡 Make sure your emulator is running and connected")
+            logger.info("💡 For RunPod, ensure your local ADB server is accessible")
             return False
             
-    except subprocess.TimeoutExpired:
-        logger.error("❌ ADB commands timed out")
-        return False
-    except FileNotFoundError:
-        logger.error("❌ ADB not found in PATH")
+    except ImportError:
+        logger.error("❌ adbutils not installed")
         return False
     except Exception as e:
         logger.error(f"❌ ADB test failed: {e}")
@@ -186,6 +184,48 @@ def test_imports():
         return False
 
 
+def test_adbutils_integration():
+    """Test adbutils integration with DeviceController."""
+    logger.info("🔍 Testing adbutils integration...")
+    
+    try:
+        from src.automation.device_controller import DeviceController
+        from config.device_config import DeviceConfig
+        
+        # Create device config
+        config = DeviceConfig()
+        
+        # Create device controller
+        controller = DeviceController(config)
+        logger.info("✅ DeviceController created successfully")
+        
+        # Test connection
+        if controller.connect():
+            logger.info("✅ Device connection successful")
+            
+            # Test device info
+            info = controller.get_device_info()
+            if info:
+                logger.info(f"✅ Device info retrieved: {info.get('model', 'Unknown')}")
+            
+            # Test device status
+            status = controller.get_device_status()
+            logger.info(f"✅ Device status: {status}")
+            
+            # Disconnect
+            controller.disconnect()
+            logger.info("✅ Device disconnection successful")
+            
+            return True
+        else:
+            logger.warning("⚠️ Device connection failed")
+            return False
+            
+    except Exception as e:
+        logger.error(f"❌ adbutils integration test failed: {e}")
+        return False
+
+
 def main():
     """Run all tests."""
     logger.info("🚀 Starting RunPod Setup Tests")
@@ -194,6 +234,7 @@ def main():
     tests = [
         ("GPU Availability", test_gpu_availability),
         ("ADB Connection", test_adb_connection),
+        ("adbutils Integration", test_adbutils_integration),
         ("Hugging Face Token", test_huggingface_token),
         ("UI-Venus Model", test_ui_venus_model),
         ("Workspace Setup", test_workspace_setup),

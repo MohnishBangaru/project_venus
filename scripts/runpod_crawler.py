@@ -168,6 +168,7 @@ class RunPodCrawler:
             logger.error(f"❌ ADB server setup failed: {e}")
             return False
     
+    
     def connect_to_device(self) -> bool:
         """
         Connect to the Android device via ADB.
@@ -384,6 +385,7 @@ class RunPodCrawler:
             
             # Setup configurations
             self.setup_runpod_configurations(target_app=target_app)
+            
             
             # Setup ADB server
             if not self.setup_adb_server():
