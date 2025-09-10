@@ -13,7 +13,7 @@ from pathlib import Path
 import numpy as np
 from PIL import Image
 import torch
-from transformers import AutoTokenizer, AutoModelForCausalLM, AutoProcessor
+from transformers import AutoTokenizer, AutoModelForCausalLM, AutoProcessor, AutoModelForVision2Seq
 from huggingface_hub import hf_hub_download
 import requests
 import json
@@ -95,15 +95,27 @@ class UIVenusModelClient:
                 logger.warning(f"Could not load processor: {e}")
                 self.processor = None
             
-            # Load model
-            self.model = AutoModelForCausalLM.from_pretrained(
-                model_path,
-                cache_dir=cache_dir,
-                trust_remote_code=self.config.trust_remote_code,
-                torch_dtype=torch.float16 if self.config.use_half_precision else torch.float32,
-                device_map="auto" if self.config.device == "cuda" else None,
-                low_cpu_mem_usage=True
-            )
+            # Load model - UI-Venus uses AutoModelForVision2Seq
+            try:
+                self.model = AutoModelForVision2Seq.from_pretrained(
+                    model_path,
+                    cache_dir=cache_dir,
+                    trust_remote_code=self.config.trust_remote_code,
+                    torch_dtype=torch.float16 if self.config.use_half_precision else torch.float32,
+                    device_map="auto" if self.config.device == "cuda" else None,
+                    low_cpu_mem_usage=True
+                )
+            except Exception as e:
+                logger.warning(f"Failed to load as Vision2Seq model, trying CausalLM: {e}")
+                # Fallback to CausalLM if Vision2Seq fails
+                self.model = AutoModelForCausalLM.from_pretrained(
+                    model_path,
+                    cache_dir=cache_dir,
+                    trust_remote_code=self.config.trust_remote_code,
+                    torch_dtype=torch.float16 if self.config.use_half_precision else torch.float32,
+                    device_map="auto" if self.config.device == "cuda" else None,
+                    low_cpu_mem_usage=True
+                )
             
             # Move to device if not using device_map
             if self.config.device != "cuda" or not torch.cuda.is_available():
@@ -213,22 +225,33 @@ class UIVenusModelClient:
     def _detect_elements_local(self, image: Image.Image) -> List[Dict[str, Any]]:
         """Detect elements using local model inference."""
         try:
-            # Prepare input
-            if self.processor:
-                inputs = self.processor(
-                    images=image,
-                    text="Detect all UI elements in this image",
-                    return_tensors="pt"
-                )
-            else:
-                # Fallback to tokenizer only
-                inputs = self.tokenizer(
-                    "Detect all UI elements in this image",
-                    return_tensors="pt"
-                )
+            # Prepare messages in UI-Venus format
+            messages = [
+                {
+                    "role": "user",
+                    "content": [
+                        {"type": "image", "image": image},
+                        {"type": "text", "text": "Detect all UI elements in this image and provide their coordinates and types."}
+                    ]
+                }
+            ]
             
-            # Move inputs to device
-            inputs = {k: v.to(self.device) for k, v in inputs.items()}
+            # Use processor to apply chat template
+            if self.processor:
+                inputs = self.processor.apply_chat_template(
+                    messages,
+                    add_generation_prompt=True,
+                    tokenize=True,
+                    return_dict=True,
+                    return_tensors="pt"
+                )
+                # Move inputs to device
+                inputs = {k: v.to(self.device) for k, v in inputs.items()}
+            else:
+                # Fallback to simple text processing
+                text = "User: Detect all UI elements in this image\nAssistant:"
+                inputs = self.tokenizer(text, return_tensors="pt")
+                inputs = {k: v.to(self.device) for k, v in inputs.items()}
             
             # Generate response
             with torch.no_grad():
@@ -239,11 +262,14 @@ class UIVenusModelClient:
                     top_p=self.config.top_p,
                     top_k=self.config.top_k,
                     do_sample=True,
-                    pad_token_id=self.tokenizer.eos_token_id
+                    pad_token_id=self.tokenizer.eos_token_id if hasattr(self.tokenizer, 'eos_token_id') else None
                 )
             
             # Decode response
-            response = self.tokenizer.decode(outputs[0], skip_special_tokens=True)
+            if self.processor:
+                response = self.processor.decode(outputs[0][inputs["input_ids"].shape[-1]:], skip_special_tokens=True)
+            else:
+                response = self.tokenizer.decode(outputs[0], skip_special_tokens=True)
             
             # Parse response to extract elements
             elements = self._parse_element_response(response)
@@ -298,23 +324,38 @@ class UIVenusModelClient:
     def _suggest_actions_local(self, image: Image.Image, context: Optional[str] = None) -> List[Dict[str, Any]]:
         """Suggest actions using local model inference."""
         try:
-            # Prepare prompt
+            # Prepare prompt for UI-Venus
             prompt = "Suggest the best actions to take on this screen for maximum app coverage."
             if context:
                 prompt += f" Context: {context}"
             
-            # Prepare input
+            # Prepare messages in UI-Venus format
+            messages = [
+                {
+                    "role": "user",
+                    "content": [
+                        {"type": "image", "image": image},
+                        {"type": "text", "text": prompt}
+                    ]
+                }
+            ]
+            
+            # Use processor to apply chat template
             if self.processor:
-                inputs = self.processor(
-                    images=image,
-                    text=prompt,
+                inputs = self.processor.apply_chat_template(
+                    messages,
+                    add_generation_prompt=True,
+                    tokenize=True,
+                    return_dict=True,
                     return_tensors="pt"
                 )
+                # Move inputs to device
+                inputs = {k: v.to(self.device) for k, v in inputs.items()}
             else:
-                inputs = self.tokenizer(prompt, return_tensors="pt")
-            
-            # Move inputs to device
-            inputs = {k: v.to(self.device) for k, v in inputs.items()}
+                # Fallback to simple text processing
+                text = f"User: {prompt}\nAssistant:"
+                inputs = self.tokenizer(text, return_tensors="pt")
+                inputs = {k: v.to(self.device) for k, v in inputs.items()}
             
             # Generate response
             with torch.no_grad():
@@ -325,11 +366,14 @@ class UIVenusModelClient:
                     top_p=self.config.top_p,
                     top_k=self.config.top_k,
                     do_sample=True,
-                    pad_token_id=self.tokenizer.eos_token_id
+                    pad_token_id=self.tokenizer.eos_token_id if hasattr(self.tokenizer, 'eos_token_id') else None
                 )
             
             # Decode response
-            response = self.tokenizer.decode(outputs[0], skip_special_tokens=True)
+            if self.processor:
+                response = self.processor.decode(outputs[0][inputs["input_ids"].shape[-1]:], skip_special_tokens=True)
+            else:
+                response = self.tokenizer.decode(outputs[0], skip_special_tokens=True)
             
             # Parse response to extract actions
             actions = self._parse_action_response(response)
