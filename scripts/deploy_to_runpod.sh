@@ -16,34 +16,16 @@ else
     WORKSPACE="."
 fi
 
-# Update system
+# Update system and install required tools
 echo "📦 Updating system packages..."
 apt update && apt upgrade -y
 
-# Install Android SDK
-echo "📱 Installing Android SDK..."
-if ! command -v adb &> /dev/null; then
-    echo "Installing Android SDK..."
-    
-    # Download and install command line tools
-    wget -q https://dl.google.com/android/repository/commandlinetools-linux-11076708_latest.zip
-    unzip -q commandlinetools-linux-11076708_latest.zip
-    mkdir -p /opt/android-sdk/cmdline-tools/latest
-    mv cmdline-tools/* /opt/android-sdk/cmdline-tools/latest/
-    rm -rf cmdline-tools commandlinetools-linux-11076708_latest.zip
-    
-    # Add to PATH
-    echo 'export ANDROID_HOME=/opt/android-sdk' >> ~/.bashrc
-    echo 'export PATH=$PATH:$ANDROID_HOME/cmdline-tools/latest/bin:$ANDROID_HOME/platform-tools' >> ~/.bashrc
-    source ~/.bashrc
-    
-    # Install platform tools
-    yes | /opt/android-sdk/cmdline-tools/latest/bin/sdkmanager "platform-tools" "platforms;android-34"
-    
-    echo "✅ Android SDK installed"
-else
-    echo "✅ Android SDK already installed"
-fi
+# Install essential tools
+echo "🔧 Installing essential tools..."
+apt install -y unzip wget curl
+
+# Note: ADB functionality provided by adbutils Python package
+echo "📱 ADB functionality will be provided by adbutils Python package"
 
 # Install Python dependencies
 echo "🐍 Installing Python dependencies..."
@@ -58,12 +40,19 @@ mkdir -p $WORKSPACE/ui_venus_cache
 echo "🧪 Testing setup..."
 python scripts/test_runpod_setup.py
 
+# Test adbutils integration
+echo "🧪 Testing adbutils integration..."
+python scripts/test_adbutils.py
+
 echo ""
 echo "🎉 Deployment complete!"
 echo ""
 echo "Next steps:"
 echo "1. Set your Hugging Face token: export HUGGINGFACE_HUB_TOKEN='your_token'"
-echo "2. Connect your emulator via ADB"
-echo "3. Run the crawler: python scripts/runpod_crawler.py"
+echo "2. On your LOCAL machine, start ADB server: adb start-server"
+echo "3. On your LOCAL machine, enable TCP/IP: adb tcpip 5555"
+echo "4. Update the crawler config with your local IP address"
+echo "5. Run the crawler: python scripts/runpod_crawler.py"
 echo ""
+echo "Note: adbutils will handle the ADB connection automatically"
 echo "For detailed instructions, see RUNPOD_SETUP.md"

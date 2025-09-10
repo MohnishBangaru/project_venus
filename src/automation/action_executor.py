@@ -497,11 +497,11 @@ class ActionExecutor:
     def _perform_tap(self, x: int, y: int) -> bool:
         """Perform a tap at the specified coordinates."""
         try:
-            result = self.device_controller._run_adb_command(
-                "shell", "input", "tap", str(x), str(y)
+            result = self.device_controller._device.shell(
+                "input", "tap", str(x), str(y)
             )
             time.sleep(self.config.get_touch_duration_seconds())
-            return result.returncode == 0
+            return result is not None
         except Exception as e:
             logger.error(f"Tap failed: {e}")
             return False
@@ -509,10 +509,10 @@ class ActionExecutor:
     def _perform_long_press(self, x: int, y: int, duration_ms: int) -> bool:
         """Perform a long press at the specified coordinates."""
         try:
-            result = self.device_controller._run_adb_command(
-                "shell", "input", "swipe", str(x), str(y), str(x), str(y), str(duration_ms)
+            result = self.device_controller._device.shell(
+                "input", "swipe", str(x), str(y), str(x), str(y), str(duration_ms)
             )
-            return result.returncode == 0
+            return result is not None
         except Exception as e:
             logger.error(f"Long press failed: {e}")
             return False
@@ -520,11 +520,11 @@ class ActionExecutor:
     def _perform_swipe(self, start_x: int, start_y: int, end_x: int, end_y: int, duration_ms: int) -> bool:
         """Perform a swipe gesture."""
         try:
-            result = self.device_controller._run_adb_command(
-                "shell", "input", "swipe", 
+            result = self.device_controller._device.shell(
+                "input", "swipe", 
                 str(start_x), str(start_y), str(end_x), str(end_y), str(duration_ms)
             )
-            return result.returncode == 0
+            return result is not None
         except Exception as e:
             logger.error(f"Swipe failed: {e}")
             return False
@@ -534,10 +534,10 @@ class ActionExecutor:
         try:
             # Escape special characters
             escaped_text = text.replace(' ', '%s').replace('&', '\\&')
-            result = self.device_controller._run_adb_command(
-                "shell", "input", "text", escaped_text
+            result = self.device_controller._device.shell(
+                "input", "text", escaped_text
             )
-            return result.returncode == 0
+            return result is not None
         except Exception as e:
             logger.error(f"Text input failed: {e}")
             return False
@@ -546,9 +546,9 @@ class ActionExecutor:
         """Clear the current input field."""
         try:
             # Select all text and delete it
-            self.device_controller._run_adb_command("shell", "input", "keyevent", "KEYCODE_CTRL_A")
+            self.device_controller._device.shell("input", "keyevent", "KEYCODE_CTRL_A")
             time.sleep(0.1)
-            self.device_controller._run_adb_command("shell", "input", "keyevent", "KEYCODE_DEL")
+            self.device_controller._device.shell("input", "keyevent", "KEYCODE_DEL")
         except Exception as e:
             logger.warning(f"Failed to clear input field: {e}")
     

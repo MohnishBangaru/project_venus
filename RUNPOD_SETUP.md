@@ -1,6 +1,6 @@
 # RunPod + Local ADB Server Setup Guide
 
-This guide will help you set up the UI-Venus Mobile Crawler on RunPod with a local ADB server for remote emulator access.
+This guide will help you set up the UI-Venus Mobile Crawler on RunPod to connect to your local emulator via ADB server. The RunPod instance will only install the ADB client to connect to your local machine where the emulator runs.
 
 ## 🚀 RunPod Setup
 
@@ -18,25 +18,11 @@ ssh root@<your-runpod-ip>
 
 ### 3. Install Dependencies
 ```bash
-# Update system
+# Update system and install essential tools
 apt update && apt upgrade -y
+apt install -y unzip wget curl
 
-# Install Android SDK and ADB
-wget https://dl.google.com/android/repository/commandlinetools-linux-11076708_latest.zip
-unzip commandlinetools-linux-11076708_latest.zip
-mkdir -p /opt/android-sdk/cmdline-tools/latest
-mv cmdline-tools/* /opt/android-sdk/cmdline-tools/latest/
-rm -rf cmdline-tools commandlinetools-linux-11076708_latest.zip
-
-# Add to PATH
-echo 'export ANDROID_HOME=/opt/android-sdk' >> ~/.bashrc
-echo 'export PATH=$PATH:$ANDROID_HOME/cmdline-tools/latest/bin:$ANDROID_HOME/platform-tools' >> ~/.bashrc
-source ~/.bashrc
-
-# Install platform tools
-sdkmanager "platform-tools" "platforms;android-34"
-
-# Install Python dependencies
+# Install Python dependencies (includes adbutils for ADB functionality)
 pip install -r requirements.txt
 ```
 
@@ -65,17 +51,13 @@ adb -s emulator-5554 forward tcp:5037 tcp:5037
 
 ### 2. On RunPod Instance
 
-**Connect to Local ADB Server:**
+**Configure Connection:**
 ```bash
-# Connect to your local machine's ADB server
-adb connect <your-local-ip>:5037
+# The adbutils package will handle ADB connections automatically
+# Just ensure your local ADB server is running and accessible
 
-# Or if using port forwarding
-adb connect <your-local-ip>:5555
-
-# Verify connection
-adb devices
-# Should show your emulator
+# Test connection (optional)
+python -c "import adbutils; adb = adbutils.AdbClient(); print(adb.device_list())"
 ```
 
 ## 🔧 Configuration
@@ -145,11 +127,11 @@ python -c "import torch; print(torch.cuda.is_available())"
 
 ### 2. Check ADB Connection
 ```bash
-# List connected devices
-adb devices
+# Test adbutils connection
+python -c "import adbutils; adb = adbutils.AdbClient(); print('Devices:', adb.device_list())"
 
-# Check ADB server status
-adb get-state
+# Check if devices are accessible
+python -c "import adbutils; adb = adbutils.AdbClient(); devices = adb.device_list(); print('Connected devices:', len(devices))"
 ```
 
 ### 3. View Logs
@@ -162,6 +144,18 @@ ls -la /workspace/crawl_results/
 ```
 
 ## 🛠️ Troubleshooting
+
+### Installation Issues
+```bash
+# If you get "unzip: command not found" error
+apt install -y unzip wget curl
+
+# If you get "wget: command not found" error
+apt install -y wget curl
+
+# If you get permission errors
+sudo apt update && sudo apt install -y unzip wget curl
+```
 
 ### ADB Connection Issues
 ```bash
