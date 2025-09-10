@@ -50,6 +50,32 @@ class DeviceConfig(BaseModel):
         description="Automatically connect to device on startup"
     )
     
+    # RunPod-Specific Settings
+    is_runpod_environment: bool = Field(
+        default=False, 
+        description="Whether running on RunPod instance"
+    )
+    runpod_workspace_path: str = Field(
+        default="/workspace", 
+        description="RunPod workspace path for persistent storage"
+    )
+    enable_remote_adb: bool = Field(
+        default=False, 
+        description="Enable remote ADB connection (for RunPod setup)"
+    )
+    remote_adb_host: Optional[str] = Field(
+        default=None, 
+        description="Remote ADB host for RunPod connection"
+    )
+    remote_adb_port: int = Field(
+        default=5037, 
+        description="Remote ADB port for RunPod connection"
+    )
+    network_timeout: int = Field(
+        default=60, 
+        description="Network timeout for remote connections in seconds"
+    )
+    
     # Device Settings
     screen_resolution: Tuple[int, int] = Field(
         default=(1080, 1920), 
@@ -261,6 +287,18 @@ class DeviceConfig(BaseModel):
             raise ValueError(f'log_level must be one of {valid_levels}')
         return v.upper()
     
+    @validator('remote_adb_port')
+    def validate_remote_adb_port(cls, v):
+        if not 1 <= v <= 65535:
+            raise ValueError('remote_adb_port must be between 1 and 65535')
+        return v
+    
+    @validator('network_timeout')
+    def validate_network_timeout(cls, v):
+        if v <= 0:
+            raise ValueError('network_timeout must be positive')
+        return v
+    
     class Config:
         env_prefix = "DEVICE_"
         case_sensitive = False
@@ -317,3 +355,31 @@ class DeviceConfig(BaseModel):
     def get_screen_center(self) -> Tuple[int, int]:
         """Get screen center coordinates."""
         return (self.screen_resolution[0] // 2, self.screen_resolution[1] // 2)
+    
+    def is_runpod_setup(self) -> bool:
+        """Check if this is a RunPod setup."""
+        return self.is_runpod_environment or self.enable_remote_adb
+    
+    def get_remote_adb_connection_string(self) -> Optional[str]:
+        """Get remote ADB connection string for RunPod."""
+        if self.enable_remote_adb and self.remote_adb_host:
+            return f"{self.remote_adb_host}:{self.remote_adb_port}"
+        return None
+    
+    def get_workspace_path(self) -> str:
+        """Get workspace path (RunPod or local)."""
+        if self.is_runpod_environment:
+            return self.runpod_workspace_path
+        return "."
+    
+    def get_effective_adb_host(self) -> str:
+        """Get effective ADB host (remote or local)."""
+        if self.enable_remote_adb and self.remote_adb_host:
+            return self.remote_adb_host
+        return self.adb_host
+    
+    def get_effective_adb_port(self) -> int:
+        """Get effective ADB port (remote or local)."""
+        if self.enable_remote_adb and self.remote_adb_host:
+            return self.remote_adb_port
+        return self.adb_port

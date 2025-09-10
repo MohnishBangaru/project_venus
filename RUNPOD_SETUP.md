@@ -53,6 +53,7 @@ adb devices
 ```
 
 **Test connection (optional)**
+```bash
 python -c "import adbutils; adb = adbutils.AdbClient(); print(adb.device_list())"
 ```
 
@@ -170,64 +171,66 @@ telnet your-local-ip 5037
 ```bash
 # Reduce batch size in config
 # Set max_memory_usage to 0.6 instead of 0.8
-
-# Use CPU fallback
-export CUDA_VISIBLE_DEVICES=""
 ```
 
-### Model Loading Issues
+## 🧪 Testing Setup
+
+### 1. Run Setup Tests
 ```bash
-# Clear model cache
-rm -rf /workspace/ui_venus_cache
+# Test RunPod environment
+python scripts/test_runpod_setup.py
 
-# Check disk space
-df -h
-
-# Verify HF token
-huggingface-cli whoami
+# Test adbutils integration
+python scripts/test_adbutils.py
 ```
 
-## 📁 Output Files
-
-The crawler generates files in `/workspace/`:
-- `crawler.log` - Detailed execution log
-- `crawl_results/` - Screenshots and action logs
-- `ui_venus_cache/` - Model cache (persistent across runs)
-
-## 🔄 Continuous Operation
-
-### 1. Background Execution
+### 2. Test Configuration
 ```bash
-# Run in background
-nohup python scripts/runpod_crawler.py > /workspace/output.log 2>&1 &
-
-# Check status
-ps aux | grep runpod_crawler
+# Test configuration loading
+python scripts/config_demo.py
 ```
 
-### 2. Scheduled Runs
-```bash
-# Add to crontab for scheduled execution
-crontab -e
+## 📁 File Structure
 
-# Run every hour
-0 * * * * cd /workspace/project_venus && python scripts/runpod_crawler.py
+```
+/workspace/
+├── crawl_results/          # Crawling results and reports
+├── ui_venus_cache/         # Model cache and temporary files
+├── scripts/
+│   ├── runpod_crawler.py   # Main RunPod crawler
+│   ├── test_runpod_setup.py # Setup testing
+│   └── test_adbutils.py    # ADB testing
+└── config/                 # Configuration files
 ```
 
-## 💡 Tips for Optimal Performance
+## 🔄 Workflow
 
-1. **Use SSD storage** for faster model loading
-2. **Enable GPU persistence** mode for better performance
-3. **Monitor memory usage** to avoid OOM errors
-4. **Use direct ADB connection** for reliable emulator access
-5. **Keep model cache** to avoid re-downloading
-6. **Use appropriate batch sizes** for your GPU memory
+1. **Local Setup**: Start emulator and ADB server on local machine
+2. **RunPod Setup**: Deploy and configure RunPod instance
+3. **Connection**: Establish ADB connection between RunPod and local machine
+4. **Crawling**: Run UI-Venus crawler on RunPod with remote device control
+5. **Results**: Collect results from RunPod workspace
+
+## 📋 Checklist
+
+- [ ] RunPod instance created with GPU
+- [ ] Local emulator running
+- [ ] ADB server started on local machine
+- [ ] RunPod connected to local ADB server
+- [ ] Hugging Face token set
+- [ ] Dependencies installed on RunPod
+- [ ] Setup tests passing
+- [ ] Configuration validated
+- [ ] First crawling session successful
 
 ## 🆘 Support
 
-For issues:
-1. Check the logs in `/workspace/crawler.log`
-2. Verify ADB connection with `adb devices`
-3. Test GPU with `nvidia-smi`
-4. Check network connectivity to your local machine
-5. Review the troubleshooting section above
+If you encounter issues:
+
+1. Check the troubleshooting section above
+2. Run the setup tests to identify problems
+3. Check logs for detailed error messages
+4. Verify network connectivity between RunPod and local machine
+5. Ensure all dependencies are properly installed
+
+For additional help, refer to the main project documentation or create an issue in the repository.

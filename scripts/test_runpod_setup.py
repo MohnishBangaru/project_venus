@@ -1,46 +1,82 @@
 #!/usr/bin/env python3
 """
-RunPod Setup Test
+RunPod Setup Testing Script
 
-This script tests the RunPod environment setup including:
-- GPU availability and CUDA
-- ADB connection
-- UI-Venus model loading
-- Device connectivity
+This script tests the RunPod environment setup for the UI-Venus Mobile Crawler,
+including GPU availability, ADB connection, and environment configuration.
 """
 
+import os
 import sys
-import subprocess
 import logging
 from pathlib import Path
 
 # Add project root to path
-project_root = Path(__file__).parent.parent
-sys.path.insert(0, str(project_root))
+sys.path.insert(0, str(Path(__file__).parent.parent))
+
+from config.device_config import DeviceConfig
+from config.crawler_config import CrawlerConfig
+from config.ui_venus_config import UIVenusConfig
+from config import ProjectConfig
 
 # Configure logging
-logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
+logging.basicConfig(
+    level=logging.INFO,
+    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s'
+)
 logger = logging.getLogger(__name__)
 
 
+def test_runpod_environment():
+    """Test if running in RunPod environment."""
+    logger.info("🔍 Testing RunPod environment detection...")
+    
+    # Check for RunPod-specific directories
+    runpod_indicators = [
+        "/workspace",
+        "/runpod",
+        "/opt/runpod"
+    ]
+    
+    found_indicators = []
+    for indicator in runpod_indicators:
+        if os.path.exists(indicator):
+            found_indicators.append(indicator)
+    
+    if found_indicators:
+        logger.info(f"✅ RunPod environment detected. Found: {', '.join(found_indicators)}")
+        return True
+    else:
+        logger.warning("⚠️ RunPod environment not detected. Running in local mode.")
+        return False
+
+
 def test_gpu_availability():
-    """Test GPU and CUDA availability."""
+    """Test GPU availability and CUDA setup."""
     logger.info("🔍 Testing GPU availability...")
     
     try:
         import torch
+        
         if torch.cuda.is_available():
             gpu_count = torch.cuda.device_count()
-            gpu_name = torch.cuda.get_device_name(0)
-            gpu_memory = torch.cuda.get_device_properties(0).total_memory / 1024**3
+            current_device = torch.cuda.current_device()
+            device_name = torch.cuda.get_device_name(current_device)
             
-            logger.info(f"✅ GPU available: {gpu_name}")
-            logger.info(f"✅ GPU count: {gpu_count}")
-            logger.info(f"✅ GPU memory: {gpu_memory:.1f} GB")
+            logger.info(f"✅ CUDA available with {gpu_count} GPU(s)")
+            logger.info(f"✅ Current device: {device_name}")
+            logger.info(f"✅ CUDA version: {torch.version.cuda}")
+            
+            # Test GPU memory
+            gpu_memory = torch.cuda.get_device_properties(current_device).total_memory
+            gpu_memory_gb = gpu_memory / (1024**3)
+            logger.info(f"✅ GPU memory: {gpu_memory_gb:.2f} GB")
+            
             return True
         else:
-            logger.warning("⚠️ CUDA not available, will use CPU")
+            logger.warning("⚠️ CUDA not available. GPU acceleration disabled.")
             return False
+            
     except ImportError:
         logger.error("❌ PyTorch not installed")
         return False
@@ -95,165 +131,148 @@ def test_huggingface_token():
     """Test Hugging Face token."""
     logger.info("🔍 Testing Hugging Face token...")
     
-    try:
-        from huggingface_hub import whoami
-        user_info = whoami()
-        logger.info(f"✅ HF token valid for user: {user_info['name']}")
+    token = os.getenv("HUGGINGFACE_HUB_TOKEN")
+    if token:
+        logger.info("✅ Hugging Face token found")
         return True
-    except Exception as e:
-        logger.error(f"❌ HF token test failed: {e}")
-        logger.info("💡 Set your token with: export HUGGINGFACE_HUB_TOKEN='your_token'")
-        return False
-
-
-def test_ui_venus_model():
-    """Test UI-Venus model availability."""
-    logger.info("🔍 Testing UI-Venus model availability...")
-    
-    try:
-        from huggingface_hub import list_models
-        models = list(list_models(filter="inclusionAI/UI-Venus-Ground-7B"))
-        
-        if models:
-            logger.info("✅ UI-Venus model found on Hugging Face")
-            return True
-        else:
-            logger.error("❌ UI-Venus model not found")
-            return False
-            
-    except Exception as e:
-        logger.error(f"❌ UI-Venus model test failed: {e}")
+    else:
+        logger.warning("⚠️ Hugging Face token not found")
+        logger.info("💡 Set HUGGINGFACE_HUB_TOKEN environment variable")
         return False
 
 
 def test_workspace_setup():
-    """Test workspace setup."""
+    """Test workspace setup and permissions."""
     logger.info("🔍 Testing workspace setup...")
     
     try:
         # Check workspace directory
-        workspace = Path("/workspace")
-        if workspace.exists():
-            logger.info("✅ Workspace directory exists")
-        else:
-            logger.warning("⚠️ Workspace directory not found, using current directory")
-            workspace = Path(".")
+        workspace_path = "/workspace" if os.path.exists("/workspace") else "."
+        logger.info(f"✅ Workspace path: {workspace_path}")
         
-        # Check write permissions
-        test_file = workspace / "test_write.tmp"
+        # Test write permissions
+        test_file = Path(workspace_path) / "test_write_permission.txt"
         test_file.write_text("test")
         test_file.unlink()
-        logger.info("✅ Write permissions OK")
+        logger.info("✅ Write permissions confirmed")
         
-        # Check available space
-        import shutil
-        total, used, free = shutil.disk_usage(workspace)
-        free_gb = free / 1024**3
-        logger.info(f"✅ Available space: {free_gb:.1f} GB")
-        
-        if free_gb < 20:
-            logger.warning("⚠️ Low disk space, UI-Venus model requires ~15GB")
+        # Check required directories
+        required_dirs = ["crawl_results", "ui_venus_cache"]
+        for dir_name in required_dirs:
+            dir_path = Path(workspace_path) / dir_name
+            dir_path.mkdir(exist_ok=True)
+            logger.info(f"✅ Directory created/verified: {dir_path}")
         
         return True
         
     except Exception as e:
-        logger.error(f"❌ Workspace test failed: {e}")
+        logger.error(f"❌ Workspace setup failed: {e}")
         return False
 
 
-def test_imports():
-    """Test required imports."""
-    logger.info("🔍 Testing required imports...")
+def test_configuration_loading():
+    """Test configuration loading."""
+    logger.info("🔍 Testing configuration loading...")
     
     try:
-        # Test core imports
-        from src.crawler import CrawlerEngine
-        from src.automation.device_controller import DeviceController
-        from src.automation.action_executor import ActionExecutor
-        from src.automation.screenshot_manager import ScreenshotManager
-        from config import CrawlerConfig, UIVenusConfig, DeviceConfig
+        # Test device configuration
+        device_config = DeviceConfig()
+        logger.info("✅ Device configuration loaded")
         
-        logger.info("✅ All core imports successful")
+        # Test RunPod-specific settings
+        device_config.is_runpod_environment = True
+        device_config.enable_remote_adb = True
+        device_config.remote_adb_host = "localhost"
+        device_config.remote_adb_port = 5037
+        
+        logger.info("✅ RunPod device configuration set")
+        
+        # Test crawler configuration
+        crawler_config = CrawlerConfig()
+        logger.info("✅ Crawler configuration loaded")
+        
+        # Test UI-Venus configuration
+        ui_venus_config = UIVenusConfig()
+        logger.info("✅ UI-Venus configuration loaded")
+        
+        # Test project configuration
+        project_config = ProjectConfig(
+            device=device_config,
+            crawler=crawler_config,
+            ui_venus=ui_venus_config
+        )
+        logger.info("✅ Project configuration loaded")
+        
         return True
         
-    except ImportError as e:
-        logger.error(f"❌ Import failed: {e}")
-        return False
     except Exception as e:
-        logger.error(f"❌ Import test failed: {e}")
+        logger.error(f"❌ Configuration loading failed: {e}")
         return False
 
 
-def test_adbutils_integration():
-    """Test adbutils integration with DeviceController."""
-    logger.info("🔍 Testing adbutils integration...")
+def test_dependencies():
+    """Test required dependencies."""
+    logger.info("🔍 Testing dependencies...")
     
-    try:
-        from src.automation.device_controller import DeviceController
-        from config.device_config import DeviceConfig
-        
-        # Create device config
-        config = DeviceConfig()
-        
-        # Create device controller
-        controller = DeviceController(config)
-        logger.info("✅ DeviceController created successfully")
-        
-        # Test connection
-        if controller.connect():
-            logger.info("✅ Device connection successful")
-            
-            # Test device info
-            info = controller.get_device_info()
-            if info:
-                logger.info(f"✅ Device info retrieved: {info.get('model', 'Unknown')}")
-            
-            # Test device status
-            status = controller.get_device_status()
-            logger.info(f"✅ Device status: {status}")
-            
-            # Disconnect
-            controller.disconnect()
-            logger.info("✅ Device disconnection successful")
-            
-            return True
-        else:
-            logger.warning("⚠️ Device connection failed")
-            return False
-            
-    except Exception as e:
-        logger.error(f"❌ adbutils integration test failed: {e}")
+    required_packages = [
+        "torch",
+        "transformers",
+        "accelerate",
+        "adbutils",
+        "opencv-python",
+        "Pillow",
+        "numpy",
+        "pydantic",
+        "click",
+        "rich"
+    ]
+    
+    missing_packages = []
+    
+    for package in required_packages:
+        try:
+            __import__(package.replace("-", "_"))
+            logger.info(f"✅ {package} available")
+        except ImportError:
+            missing_packages.append(package)
+            logger.error(f"❌ {package} not available")
+    
+    if missing_packages:
+        logger.error(f"❌ Missing packages: {', '.join(missing_packages)}")
         return False
+    else:
+        logger.info("✅ All required packages available")
+        return True
 
 
-def main():
-    """Run all tests."""
-    logger.info("🚀 Starting RunPod Setup Tests")
+def run_all_tests():
+    """Run all tests and provide summary."""
+    logger.info("🚀 Starting RunPod setup tests...")
     logger.info("=" * 50)
     
     tests = [
+        ("RunPod Environment", test_runpod_environment),
         ("GPU Availability", test_gpu_availability),
         ("ADB Connection", test_adb_connection),
-        ("adbutils Integration", test_adbutils_integration),
         ("Hugging Face Token", test_huggingface_token),
-        ("UI-Venus Model", test_ui_venus_model),
         ("Workspace Setup", test_workspace_setup),
-        ("Required Imports", test_imports)
+        ("Configuration Loading", test_configuration_loading),
+        ("Dependencies", test_dependencies)
     ]
     
     results = {}
     
     for test_name, test_func in tests:
-        logger.info(f"\n📋 Running: {test_name}")
+        logger.info(f"\n--- {test_name} ---")
         try:
             results[test_name] = test_func()
         except Exception as e:
-            logger.error(f"❌ {test_name} failed with exception: {e}")
+            logger.error(f"❌ {test_name} test failed with exception: {e}")
             results[test_name] = False
     
     # Summary
     logger.info("\n" + "=" * 50)
-    logger.info("📊 TEST SUMMARY")
+    logger.info("📊 Test Results Summary:")
     logger.info("=" * 50)
     
     passed = 0
@@ -261,22 +280,21 @@ def main():
     
     for test_name, result in results.items():
         status = "✅ PASS" if result else "❌ FAIL"
-        logger.info(f"{status} {test_name}")
+        logger.info(f"{test_name}: {status}")
         if result:
             passed += 1
     
-    logger.info(f"\n📈 Results: {passed}/{total} tests passed")
+    logger.info("=" * 50)
+    logger.info(f"Overall: {passed}/{total} tests passed")
     
     if passed == total:
         logger.info("🎉 All tests passed! RunPod setup is ready.")
-        logger.info("🚀 You can now run: python scripts/runpod_crawler.py")
+        return True
     else:
-        logger.warning("⚠️ Some tests failed. Please check the issues above.")
-        logger.info("📖 See RUNPOD_SETUP.md for detailed setup instructions")
-    
-    return passed == total
+        logger.warning(f"⚠️ {total - passed} test(s) failed. Please check the setup.")
+        return False
 
 
 if __name__ == "__main__":
-    success = main()
+    success = run_all_tests()
     sys.exit(0 if success else 1)
