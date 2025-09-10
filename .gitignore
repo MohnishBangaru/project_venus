@@ -169,6 +169,11 @@ models/
 cache/
 __pycache__/
 
+# UI-Venus model cache (too large for git)
+ui_venus_cache/
+qwen_cache/
+mock_cache/
+
 # Configuration files with secrets
 .env.local
 .env.production
