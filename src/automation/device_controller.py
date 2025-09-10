@@ -115,7 +115,7 @@ class DeviceController:
             
             # Check if device is still responsive
             try:
-                self._device.shell("echo", "test")
+                self._device.shell("echo test")
                 return DeviceStatus.ONLINE
             except Exception:
                 return DeviceStatus.OFFLINE
@@ -185,7 +185,7 @@ class DeviceController:
             
             # Clear app data if configured
             if self.config.clear_app_data:
-                self._device.shell("pm", "clear", package_name)
+                self._device.shell(f"pm clear {package_name}")
                 time.sleep(2)
             
             # Grant permissions if configured
@@ -194,9 +194,9 @@ class DeviceController:
             
             # Launch app
             if activity_name:
-                result = self._device.shell("am", "start", "-n", f"{package_name}/{activity_name}")
+                result = self._device.shell(f"am start -n {package_name}/{activity_name}")
             else:
-                result = self._device.shell("monkey", "-p", package_name, "-c", "android.intent.category.LAUNCHER", "1")
+                result = self._device.shell(f"monkey -p {package_name} -c android.intent.category.LAUNCHER 1")
             
             if result:
                 self._current_app = package_name
@@ -225,7 +225,7 @@ class DeviceController:
             if not self._connected or not self._device:
                 return False
             
-            result = self._device.shell("am", "force-stop", package_name)
+            result = self._device.shell(f"am force-stop {package_name}")
             
             if result is not None:
                 if self._current_app == package_name:
@@ -322,7 +322,7 @@ class DeviceController:
             if not self._connected or not self._device:
                 return False
             
-            result = self._device.shell("input", "keyevent", key_code)
+            result = self._device.shell(f"input keyevent {key_code}")
             
             if result is not None:
                 logger.debug(f"Pressed key: {key_code}")
@@ -436,7 +436,7 @@ class DeviceController:
     def _get_device_property(self, property_name: str) -> str:
         """Get a device property value."""
         try:
-            result = self._device.shell("getprop", property_name)
+            result = self._device.shell(f"getprop {property_name}")
             if result:
                 return result.strip()
             return ""
@@ -446,7 +446,7 @@ class DeviceController:
     def _get_screen_resolution(self) -> Tuple[int, int]:
         """Get screen resolution from device."""
         try:
-            result = self._device.shell("wm", "size")
+            result = self._device.shell("wm size")
             if result:
                 match = re.search(r'Physical size: (\d+)x(\d+)', result)
                 if match:
@@ -458,7 +458,7 @@ class DeviceController:
     def _get_total_memory(self) -> int:
         """Get total device memory in MB."""
         try:
-            result = self._device.shell("cat", "/proc/meminfo")
+            result = self._device.shell("cat /proc/meminfo")
             if result:
                 match = re.search(r'MemTotal:\s+(\d+)', result)
                 if match:
@@ -470,7 +470,7 @@ class DeviceController:
     def _get_available_memory(self) -> int:
         """Get available device memory in MB."""
         try:
-            result = self._device.shell("cat", "/proc/meminfo")
+            result = self._device.shell("cat /proc/meminfo")
             if result:
                 match = re.search(r'MemAvailable:\s+(\d+)', result)
                 if match:
@@ -482,7 +482,7 @@ class DeviceController:
     def _get_total_storage(self) -> int:
         """Get total device storage in MB."""
         try:
-            result = self._device.shell("df", "/data")
+            result = self._device.shell("df /data")
             if result:
                 lines = result.strip().split('\n')
                 if len(lines) > 1:
@@ -496,7 +496,7 @@ class DeviceController:
     def _get_available_storage(self) -> int:
         """Get available device storage in MB."""
         try:
-            result = self._device.shell("df", "/data")
+            result = self._device.shell("df /data")
             if result:
                 lines = result.strip().split('\n')
                 if len(lines) > 1:
@@ -527,7 +527,7 @@ class DeviceController:
             ]
             
             for permission in permissions:
-                self._device.shell("pm", "grant", package_name, permission)
+                self._device.shell(f"pm grant {package_name} {permission}")
                 
         except Exception as e:
             logger.warning(f"Failed to grant permissions: {e}")

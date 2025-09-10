@@ -498,7 +498,7 @@ class ActionExecutor:
         """Perform a tap at the specified coordinates."""
         try:
             result = self.device_controller._device.shell(
-                "input", "tap", str(x), str(y)
+                f"input tap {x} {y}"
             )
             time.sleep(self.config.get_touch_duration_seconds())
             return result is not None
@@ -510,7 +510,7 @@ class ActionExecutor:
         """Perform a long press at the specified coordinates."""
         try:
             result = self.device_controller._device.shell(
-                "input", "swipe", str(x), str(y), str(x), str(y), str(duration_ms)
+                f"input swipe {x} {y} {x} {y} {duration_ms}"
             )
             return result is not None
         except Exception as e:
@@ -521,8 +521,7 @@ class ActionExecutor:
         """Perform a swipe gesture."""
         try:
             result = self.device_controller._device.shell(
-                "input", "swipe", 
-                str(start_x), str(start_y), str(end_x), str(end_y), str(duration_ms)
+                f"input swipe {start_x} {start_y} {end_x} {end_y} {duration_ms}"
             )
             return result is not None
         except Exception as e:
@@ -535,7 +534,7 @@ class ActionExecutor:
             # Escape special characters
             escaped_text = text.replace(' ', '%s').replace('&', '\\&')
             result = self.device_controller._device.shell(
-                "input", "text", escaped_text
+                f"input text {escaped_text}"
             )
             return result is not None
         except Exception as e:
@@ -546,9 +545,9 @@ class ActionExecutor:
         """Clear the current input field."""
         try:
             # Select all text and delete it
-            self.device_controller._device.shell("input", "keyevent", "KEYCODE_CTRL_A")
+            self.device_controller._device.shell("input keyevent KEYCODE_CTRL_A")
             time.sleep(0.1)
-            self.device_controller._device.shell("input", "keyevent", "KEYCODE_DEL")
+            self.device_controller._device.shell("input keyevent KEYCODE_DEL")
         except Exception as e:
             logger.warning(f"Failed to clear input field: {e}")
     

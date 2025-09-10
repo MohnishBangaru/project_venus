@@ -29,7 +29,12 @@ def test_adbutils_basic():
         
         for device in devices:
             print(f"   - Device: {device.serial}")
-            print(f"     State: {device.state}")
+            try:
+                # Try to get device state, fallback if not available
+                state = getattr(device, 'state', 'unknown')
+                print(f"     State: {state}")
+            except:
+                print(f"     State: unknown")
         
         return len(devices) > 0
         
@@ -89,11 +94,11 @@ def test_shell_commands():
         device = devices[0]
         
         # Test basic shell command
-        result = device.shell("echo", "test")
+        result = device.shell("echo test")
         print(f"✅ Shell command result: {result}")
         
         # Test device property
-        result = device.shell("getprop", "ro.product.model")
+        result = device.shell("getprop ro.product.model")
         print(f"📱 Device model: {result}")
         
         return True
