@@ -1,0 +1,126 @@
+# UI-Venus Mobile Crawler Dependencies
+# Core dependencies for the project
+
+# =============================================================================
+# CORE DEPENDENCIES
+# =============================================================================
+
+# Configuration and Data Validation
+pydantic>=2.0.0,<3.0.0
+python-dotenv>=1.0.0
+
+# CLI Framework
+click>=8.1.0
+rich>=13.0.0
+
+# Logging
+loguru>=0.7.0
+
+# =============================================================================
+# UI-VENUS MODEL INTEGRATION
+# =============================================================================
+
+# PyTorch and Transformers for UI-Venus
+torch>=2.0.0,<3.0.0
+torchvision>=0.15.0,<1.0.0
+transformers>=4.30.0,<5.0.0
+accelerate>=0.20.0,<1.0.0
+sentencepiece>=0.1.99
+
+# Model Loading and Caching
+huggingface-hub>=0.16.0
+safetensors>=0.3.0
+
+# =============================================================================
+# ANDROID AUTOMATION
+# =============================================================================
+
+# Android Device Control
+uiautomator2>=3.0.0
+pure-python-adb>=0.3.0
+
+# Image Processing
+opencv-python>=4.8.0,<5.0.0
+Pillow>=10.0.0
+numpy>=1.24.0,<2.0.0
+
+# =============================================================================
+# HTTP AND API
+# =============================================================================
+
+# HTTP Requests
+requests>=2.31.0,<3.0.0
+httpx>=0.24.0,<1.0.0
+
+# =============================================================================
+# TESTING FRAMEWORK
+# =============================================================================
+
+# Testing
+pytest>=7.4.0,<8.0.0
+pytest-asyncio>=0.21.0,<1.0.0
+pytest-cov>=4.1.0,<5.0.0
+pytest-mock>=3.11.0,<4.0.0
+
+# Test Data Generation
+factory-boy>=3.3.0,<4.0.0
+faker>=19.0.0,<20.0.0
+
+# =============================================================================
+# DEVELOPMENT TOOLS
+# =============================================================================
+
+# Code Quality
+black>=23.0.0,<24.0.0
+isort>=5.12.0,<6.0.0
+flake8>=6.0.0,<7.0.0
+mypy>=1.5.0,<2.0.0
+pre-commit>=3.3.0,<4.0.0
+
+# Type Stubs
+types-requests>=2.31.0
+types-Pillow>=10.0.0
+
+# =============================================================================
+# DOCUMENTATION
+# =============================================================================
+
+# Documentation Generation
+mkdocs>=1.5.0,<2.0.0
+mkdocs-material>=9.0.0,<10.0.0
+
+# =============================================================================
+# REPORTING
+# =============================================================================
+
+# PDF Report Generation
+reportlab>=4.0.0,<5.0.0
+
+# =============================================================================
+# UTILITIES
+# =============================================================================
+
+# File and Path Operations
+pathlib2>=2.3.7; python_version < "3.4"
+
+# JSON and YAML Processing
+PyYAML>=6.0.0
+
+# Progress Bars and Terminal UI
+tqdm>=4.65.0
+
+# Date and Time
+python-dateutil>=2.8.0
+
+# =============================================================================
+# OPTIONAL DEPENDENCIES
+# =============================================================================
+
+# GPU Acceleration (optional)
+# nvidia-ml-py3>=7.352.0  # Uncomment if you need GPU monitoring
+
+# Advanced Image Processing (optional)
+# scikit-image>=0.21.0  # Uncomment if you need advanced image processing
+
+# Machine Learning Utilities (optional)
+# scikit-learn>=1.3.0  # Uncomment if you need ML utilities
